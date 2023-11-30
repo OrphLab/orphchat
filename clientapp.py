@@ -5,20 +5,6 @@ from queue import Queue
 import datetime
 import pickle
 
-height = 600
-width = 600
-primewindow = tk.Tk()
-primewindow.title("Chatroom")
-primewindow.geometry(f"{width}x{height}")
-
-chatBox = tk.Text(primewindow, height=20, width=60)
-chatBox.pack()
-userInput = tk.Entry(primewindow, width=45)  # Changed to Entry for single-line input
-userInput.pack(side=tk.BOTTOM)
-
-sendbutton = tk.Button(primewindow, text="Send" )
-sendbutton.pack(side=tk.RIGHT)
-
 # function to send nickname to server
 def send_nickname_to_server(client, nickname):
     client.sendall(pickle.dumps(nickname))
@@ -47,11 +33,11 @@ def receive_message():
             client.close()
             break
 
-
-def write_message():
+# function to send messages to server
+def write_message(user_input_queue):
     while True:
         try:
-            user_input = input("Me: ")
+            user_input = user_input_queue.get(block=True)
             msg_dict = {'nickname': nickname, 'message': user_input}
             message = pickle.dumps(msg_dict) # Encode message
             
@@ -62,20 +48,7 @@ def write_message():
             client.close()
             break
 
-def update_chatBox_window():
-    while True:
-        try:
-            (received_message_queue.qsize())
-            message = received_message_queue.get(block=False) # Get message from queue
-            chatBox.config(state='normal') # Allow writing to chatBox
-            chatBox.insert('end', message) # Write message to chatBox
-            chatBox.see(tk.END)  # Scroll if necessary
-            chatBox.config(state='disabled') # Disable writing to chatBox
-            primewindow.update_idletasks()  # Force an update of the GUI to display the message
-        except Exception as e:
-            #print(f"An error occurred: {e}")
-            pass
-
+# function to open socket
 def opening_socket(HOST, PORT):
     try:
         print(f"Connecting to {HOST} on port {PORT}")
@@ -88,8 +61,53 @@ def opening_socket(HOST, PORT):
         client.close()
         return None
 
+# function to create GUI
+def gui_thread():
+    try:
+        height = 600
+        width = 600
+        primewindow = tk.Tk()
+        primewindow.title("Chatroom")
+        primewindow.geometry(f"{width}x{height}")
 
+        global chatBox
+        chatBox = tk.Text(primewindow, height=20, width=60)
+        chatBox.pack() #packs the chatBox into the window and displays it
 
+        userInput = tk.Entry(primewindow, width=45)
+        userInput.pack(side=tk.BOTTOM)
+
+        #sendbutton = tk.Button(primewindow, text="Send", command=(lambda: user_input_queue.put(userInput.get()), userInput.delete(0, tk.END)))
+        sendbutton = tk.Button(
+                primewindow,
+                text="Send",
+                command=lambda: (user_input_queue.put(userInput.get()), 
+                                 userInput.delete(0, tk.END))
+                                )
+        
+        sendbutton.pack(side=tk.RIGHT)
+
+        primewindow.mainloop()
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        client.close()
+        return None
+
+# function to update chatBox window
+def update_chatBox_window():
+    while True:
+        try:
+            message = received_message_queue.get(block=False) # Get message from queue
+            chatBox.config(state='normal') # Allow writing to chatBox
+            chatBox.insert('end', message) # Write message to chatBox
+            chatBox.see(tk.END)  # Scroll if necessary
+            chatBox.config(state='disabled') # Disable writing to chatBox
+            #primewindow.update_idletasks()  # Force an update of the GUI to display the message
+        except Exception as e:
+            #print(f"An error occurred: {e}")
+            pass
+
+# main function
 if __name__ == '__main__':
     # Set up socket
     HOST = '127.0.0.1'
@@ -97,7 +115,7 @@ if __name__ == '__main__':
     
     # Queue to communicate between threads
     received_message_queue = Queue()
-    send_message_queue = Queue()
+    user_input_queue = Queue()
 
     # Get current time
     now = datetime.datetime.now()
@@ -107,15 +125,20 @@ if __name__ == '__main__':
     client = opening_socket(HOST, PORT)
 
     # Start threads
+    print('starting threads - receive')
     receive_thread = threading.Thread(target=receive_message) # create thread for receiving messages
     receive_thread.start()
     
+    print('starting threads - update')
     update_thread = threading.Thread(target=update_chatBox_window) # create thread for updating chatBox
     update_thread.start()
     
-    write_thread = threading.Thread(target=write_message) # create thread for writing messages
+    print('starting threads - write')
+    write_thread = threading.Thread(target=write_message, args=(user_input_queue,)) # create thread for writing messages
     write_thread.start()
 
+    gui_thread = threading.Thread(target=gui_thread)
+    gui_thread.start()
 
-# !TODO: Add GUI as a thread and own function
-    primewindow.mainloop() # Start GUI
+   # TODO: Add windows promopt for nickname
+   # TODO: Figure out new logi for updateing chatpox window, and delete global chatbox variable 
