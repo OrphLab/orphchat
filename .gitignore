@@ -1,4 +1,5 @@
 venv/
+test.py
 clientapp_old.py
 .vscode/
 ```
