@@ -26,6 +26,7 @@ clients = []
 def message_decoder(message):
     try:
         received_message = pickle.loads(message)
+        print(f"Received message: {received_message}")
         sender_nickname = received_message['nickname']
         message_content = received_message['message']
         decoded_message = (sender_nickname, message_content)
@@ -43,15 +44,15 @@ def receive_messages(client):
             print(f'{len(received_bytes)} bytes received) from {client.nickname}')
             message = message_decoder(received_bytes)
             print(message)  
-
             broadcast(received_bytes) 
         except Exception as e:
-            print(f'something went wrong {e}')
-            # clients.remove(client)
-            # if clients:
-            #     broadcast_terminal(f"{client.nickname} left the chat!")
-            # client.socket.close()
-            # broadcast_terminal(f"There are {len(clients)} users in the chat!")
+            print(f'something went wrong {e} received message')
+            clients.remove(client)
+            if clients:
+                msg_dict = {'nickname': 'SERVER', 'message': f"{client.nickname} left the chat!"}
+                broadcast_server_anouncements(pickle.dumps(msg_dict))
+            client.socket.close()
+            
             break
         finally:
             pass
@@ -64,13 +65,14 @@ def broadcast(message):
         except Exception as e:
             print(f"An error occurred: {e} broadcasting to {client.nickname}")
 
-def broadcast_terminal(message):
-    try:
-        for client in clients:
-            client.socket.sendall(message)
-    except Exception as e:
-        print(f"An error occurred: {e} broadcasting to {client.nickname}")
 
+def broadcast_server_anouncements(message):
+    for client in clients:
+        try:
+            print('broadcasting server announcment message')
+            client.socket.send(message)
+        except Exception as e:
+            print(f"An error occurred: {e} broadcasting to {client.nickname}")
 
 # function to receive connections from clients
 def main():
@@ -78,11 +80,19 @@ def main():
         # accept connection from client
         client_socket, address = server.accept()
         print(f"Connected with {str(address)}")
-
+        
         # ask for nickname
-        client_socket.send(b"NICK")  
-        received_bytes = client_socket.recv(4096)
-        nickname = pickle.loads(received_bytes)
+        try:
+            client_socket.send(b"NICK")  
+            received_bytes = client_socket.recv(4096)
+            nickname = pickle.loads(received_bytes)
+            msg_dict = {'nickname': 'SERVER', 'message': f"{nickname} joined the chat!"}
+            broadcast_server_anouncements(pickle.dumps(msg_dict))
+        except Exception as e:
+            print(f"An error occurred: {e} receiving nickname")
+            client_socket.close()
+            continue
+            
         
         # create client object and add to clients list
         client = Client(client_socket, address, nickname)
