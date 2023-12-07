@@ -108,3 +108,10 @@ def main():
 if __name__ == "__main__":
     print("Server is listening...")
     main()
+    
+    #TODO:
+    # print error message if server is closed in chatbox
+    # print all client errors in chatbox
+    # print all server errors in chatbox
+    # get nickname from client through popup window
+    

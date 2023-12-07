@@ -54,8 +54,8 @@ class PrimaryWindow:
                 self.chatBox.see(tk.END)  # Scroll if necessary
                 self.chatBox.config(state='disabled') # Disable writing to chatBox
             except Exception as e:
-                #print(f"An error occurred: {e}")
-                pass
+                print(f"An error occurred: {e}")
+                
                 
         
         

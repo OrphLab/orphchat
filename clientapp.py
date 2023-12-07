@@ -89,12 +89,9 @@ if __name__ == '__main__':
     write_thread = threading.Thread(target=chatmessages.write_message) # create thread for writing messages
     write_thread.start()
 
-    #gui_thread = threading.Thread(target=chatgui)
-    #gui_thread.start()
-    
     print('threads started')
 
     master.mainloop()
     
    # TODO: Add windows promopt for nickname
-   # TODO: Figure out new logi for updateing chatpox window, and delete global chatbox variable 
+   
